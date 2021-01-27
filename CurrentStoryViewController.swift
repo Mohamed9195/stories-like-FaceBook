@@ -1,6 +1,4 @@
 //
-//  CurrentStoryViewController.swift
-//  Hebat
 //
 //  Created by mohamed hashem on 29/11/2020.
 //  Copyright © 2020 mohamed hashem. All rights reserved.
@@ -10,7 +8,7 @@ import UIKit
 import ImageSlideshow
 import RxSwift
 
-class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
+class YourClass: UIViewController, UITextFieldDelegate {
     
     @IBOutlet weak var progressCollectionView: UICollectionView!
     @IBOutlet weak var imageSliderView: ImageSlideshow!
@@ -21,8 +19,7 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
     @IBOutlet weak var saveImageStoryButton: UIButton!
     @IBOutlet weak var messageTextFeild: UITextField!
     
-    var fromNotification = false
-    var photos: [FeedStories.Photos] = []
+    var photos: [FeedStories.Photos] = [] // your model
     var StoryID: Int?
     var user: FeedStories.User?
     var kingfisherSource: [KingfisherSource] = [] {
@@ -35,15 +32,8 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
     var pauseIs = false
     private let disposed = DisposeBag()
     var currentPhotoID: Int = 0
-    var showStoryID: Int?
-    var isLiked = false
-    var currentIndex: Int = 0
-    
     var slideshowTimer: Timer?
-    let transparentView = UIView()
-    let tableView = UITableView()
-    var friendsAre: FollowingModel?
-    var shareTo: Int?
+  
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -51,10 +41,7 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
         if showStoryID != nil {
             showStory() 
         }
-        
-//        tableView.delegate = self
-//        tableView.dataSource = self
-//        tableView.register(UINib(nibName: "AllFriendTableViewCell", bundle: nil), forCellReuseIdentifier: "AllFriendTableViewCell")
+  
         loadUserFollowing()
 
         userProfileButton.isHidden = true
@@ -78,7 +65,6 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
         if textField.text == "Write a reply.." {
             textField.text = ""
         }
-        //self.addTransparentView(frames: self.messageTextFeild.frame)
         imageSliderView.pauseTimer()
         pauseLayer(layer: sharpLayer)
     }
@@ -88,54 +74,10 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
         self.imageSliderView.unpauseTimer()
         self.resumeLayer(layer: self.sharpLayer)
     }
-    override open var prefersStatusBarHidden: Bool {
-        return true
-    }
-
-    func addTransparentView(frames: CGRect) {
-        let window = UIApplication.shared.keyWindow
-        transparentView.frame = window?.frame ?? self.view.frame
-        self.view.addSubview(transparentView)
-
-        tableView.frame = CGRect(x: frames.origin.x, y: frames.origin.y + frames.height, width: 200.0, height: 0)
-        self.view.addSubview(tableView)
-        tableView.layer.cornerRadius = 10
-
-        transparentView.backgroundColor = UIColor.black.withAlphaComponent(0.9)
-        tableView.reloadData()
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(removeTransparentView))
-        transparentView.addGestureRecognizer(tapGesture)
-        transparentView.alpha = 0.5
-        UIView.animate(withDuration: 0.4, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 1.0, options: .curveEaseInOut, animations: {
-            self.transparentView.alpha = 0.5
-            self.tableView.frame = CGRect(x: (self.view.frame.width - frames.width) / 2,
-                                          y: self.view.frame.height - (200 + frames.height + 50),
-                                          width: frames.width,
-                                          height: 200)
-        }, completion: nil)
-    }
-
-    @objc func removeTransparentView() {
-        let frames = messageTextFeild.frame
-        UIView.animate(withDuration: 0.4, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 1.0, options: .curveEaseInOut, animations: {
-            self.transparentView.alpha = 0
-            self.tableView.frame = CGRect(x: frames.origin.x, y: frames.origin.y + frames.height, width: frames.width, height: 0)
-        }, completion: nil)
-    }
     
     @objc func handleSliderSwipe(recognizer: UISwipeGestureRecognizer) {
         if recognizer.direction == .down {
-            if fromNotification {
-                let storyboard = UIStoryboard(name: "Main", bundle: nil)
-                let rootViewController = storyboard.instantiateInitialViewController()
-                rootViewController?.modalPresentationStyle = .fullScreen
-                if rootViewController != nil {
-                    self.present(rootViewController!, animated: false)
-                }
-                //self.presentEventTypeView(storyboardName: "Main", viewControllerID: "HomeTabBarController")
-            } else {
-                dismiss(animated: true, completion: nil)
-            }
+          dismiss(animated: true, completion: nil)
         }
     }
     
@@ -183,30 +125,20 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
     }
     
     @objc func slideshowTick() {
-        if self.fromNotification {
-            let storyboard = UIStoryboard(name: "Main", bundle: nil)
-            let rootViewController = storyboard.instantiateInitialViewController()
-            rootViewController?.modalPresentationStyle = .fullScreen
-            if rootViewController != nil {
-                self.present(rootViewController!, animated: false)
-            }
-            //self.presentEventTypeView(storyboardName: "Main", viewControllerID: "HomeTabBarController")
-        } else {
-            self.dismiss(animated: true, completion: nil)
-        }
+         self.dismiss(animated: true, completion: nil)
     }
     
     private func showStory() {
         guard let storyID = showStoryID else {
             return
         }
-        HebatEndPoints.shared
+        DataBase.shared
             .provider.rx
             .request(.showStory(storyID: storyID))
             .filterSuccessfulStatusCodes()
             .timeout(.seconds(20), scheduler: MainScheduler.instance)
             .retry(2)
-            .map(ShowStory.self)
+            .map(yourModel.self)
             .observeOn(MainScheduler.instance)
             .subscribe(onSuccess: { response in
                 guard let storyIs = response.story else {
@@ -228,102 +160,9 @@ class CurrentStoryViewController: UIViewController, UITextFieldDelegate {
                 
             }.disposed(by: disposed)
     }
-    
-    @IBAction func pressedToSaveStory(_ sender: UIButton) {
-        guard let storyID = StoryID, currentPhotoID < photos.count else {
-            return
-        }
-        
-        HebatEndPoints.shared
-            .provider.rx
-            .request(.saveStory(photo_id: photos[currentPhotoID].id , story_id: storyID))
-            .filterSuccessfulStatusCodes()
-            .timeout(.seconds(20), scheduler: MainScheduler.instance)
-            .retry(2)
-            .observeOn(MainScheduler.instance)
-            .subscribe(onSuccess: { response in
-                self.isLiked = !self.isLiked
-                self.isLiked ? self.saveImageStoryButton.setImage(UIImage(named: "featuredy"), for: .normal) : self.saveImageStoryButton.setImage(UIImage(named: "feature"), for: .normal)
-            }) { error in
-                self.saveImageStoryButton.setImage(UIImage(named: "featuredy"), for: .normal)
-                PopUpAlert.showErrorToastWith(error)
-                
-            }.disposed(by: disposed)
-    }
-    
-    @IBAction func sendMessagePressed(_ sender: UIButton) {
-        guard let message = messageTextFeild.text,
-              message != "Write a reply..",
-              let currentUser = try? CurrentUser.user.value(),
-              let userID = user?.id,
-//              let userID = shareTo,
-              let StoryIDIS = StoryID else {
-            PopUpAlert.showErrorToastWith(message: "please check the data that entered is correct".localized)
-            return
-        }
-        
-        sendMessage(from_user_id: currentUser.userId ,
-                    to_user_id: userID,
-                    message: message,
-                    file: nil,
-                    share_id: StoryIDIS,
-                    share_type: "story")
-    }
-    
-    func sendMessage(from_user_id: Int, to_user_id: Int, message: String, file: [UIImage]?, share_id: Int?, share_type: String?) {
-        PKHUDIndicator.showProgressView()
-        HebatEndPoints.shared
-            .provider.rx
-            .request(.sendMessage(from_user_id: from_user_id, to_user_id: to_user_id, message: message, file: file, share_id: share_id, share_type: share_type))
-            .filterSuccessfulStatusCodes()
-            .timeout(.seconds(300), scheduler: MainScheduler.instance)
-            .retry(2)
-            .map(UserChats.self)
-            .observeOn(MainScheduler.instance)
-            .subscribe(onSuccess: { response in
-                PKHUDIndicator.hideBySuccessFlash()
-                self.imageSliderView.unpauseTimer()
-                self.resumeLayer(layer: self.sharpLayer)
-                self.messageTextFeild.text = ""
-                self.messageTextFeild.placeholder = "Write a reply..".localized
-
-            }) { error in
-                PKHUDIndicator.hideByErrorFlash()
-                self.imageSliderView.unpauseTimer()
-                self.resumeLayer(layer: self.sharpLayer)
-                
-            }.disposed(by: disposed)
-    }
-
-    func loadUserFollowing() {
-        HebatEndPoints.shared
-            .provider.rx
-            .request(.getFollowings)
-            .filterSuccessfulStatusCodes()
-            .timeout(.seconds(20), scheduler: MainScheduler.instance)
-            .retry(2)
-            .map(FollowingModel.self)
-            .observeOn(MainScheduler.instance)
-            .subscribe(onSuccess: { response in
-                self.friendsAre = response
-
-            }) { error in
-
-            }.disposed(by: disposed)
-    }
-    
+   
     @IBAction func dismissView(_ sender: UIButton) {
-        if fromNotification {
-            let storyboard = UIStoryboard(name: "Main", bundle: nil)
-            let rootViewController = storyboard.instantiateInitialViewController()
-            rootViewController?.modalPresentationStyle = .fullScreen
-            if rootViewController != nil {
-                self.present(rootViewController!, animated: false)
-            }
-            //self.presentEventTypeView(storyboardName: "Main", viewControllerID: "HomeTabBarController")
-        } else {
-            dismiss(animated: true, completion: nil)
-        }
+       dismiss(animated: true, completion: nil)
     }
 }
 
@@ -376,7 +215,7 @@ extension CurrentStoryViewController: UICollectionViewDelegateFlowLayout {
 }
 
 // MARK: - animation slider Action
-extension CurrentStoryViewController: ImageSlideshowDelegate  {
+extension YourClass: ImageSlideshowDelegate  {
     
     func pauseLayer(layer: CALayer) {
         let pausedTime: CFTimeInterval = layer.convertTime(CACurrentMediaTime(), from: nil)
@@ -413,17 +252,7 @@ extension CurrentStoryViewController: ImageSlideshowDelegate  {
         currentIndex = page
         currentPhotoID = page
         if page == 0 {
-            if fromNotification {
-                let storyboard = UIStoryboard(name: "Main", bundle: nil)
-                let rootViewController = storyboard.instantiateInitialViewController()
-                rootViewController?.modalPresentationStyle = .fullScreen
-                if rootViewController != nil {
-                    self.present(rootViewController!, animated: false)
-                }
-                //self.presentEventTypeView(storyboardName: "Main", viewControllerID: "HomeTabBarController")
-            } else {
-                dismiss(animated: true, completion: nil)
-            }
+            dismiss(animated: true, completion: nil)
         }
         let index = IndexPath.init(item: page, section: 0)
         if index.row > 0, index.row < kingfisherSource.count {
@@ -439,8 +268,6 @@ extension CurrentStoryViewController: ImageSlideshowDelegate  {
     }
     
     func drawingProgressView(start: CGPoint, end: CGPoint, content: ProgressStoryCollectionViewCell) {
-
-
         if currentIndex < self.photos.count, self.photos[currentIndex].is_saved {
             self.saveImageStoryButton.setImage(#imageLiteral(resourceName: "featuredy"), for: .normal)
         } else {
@@ -478,31 +305,3 @@ extension CurrentStoryViewController: ImageSlideshowDelegate  {
     }
 }
 
-// MARK: - table for freind slider Action
-extension CurrentStoryViewController:  UITableViewDelegate, UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return friendsAre?.following_data.count ?? 0
-    }
-
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: "AllFriendTableViewCell", for: indexPath) as? AllFriendTableViewCell else {
-            fatalError()
-        }
-        cell.nameLabel.text = friendsAre?.following_data[indexPath.row].user.name ?? ""
-        let image = friendsAre?.following_data[indexPath.row].user.path
-        cell.userImage.loadImage(urlString: image ?? "")
-        cell.talentedLabel.text = friendsAre?.following_data[indexPath.row].user.talent ?? ""
-        return cell
-    }
-
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 50
-    }
-
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let text = messageTextFeild.text ?? ""
-        messageTextFeild.text = text + " " + (friendsAre?.following_data[indexPath.row].user.name ?? "").replacingOccurrences(of: " ", with: "") + " "
-        shareTo = friendsAre?.following_data[indexPath.row].user.id ?? user?.id
-        removeTransparentView()
-    }
-}
